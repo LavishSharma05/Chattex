@@ -10,13 +10,7 @@ import { getFirestore, setDoc, doc } from "firebase/firestore";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyBIEcU1T2bkbr2Jrlkd_-PboJQseBqtmls",
-  authDomain: "chattex-app.firebaseapp.com",
-  projectId: "chattex-app",
-  storageBucket: "chattex-app.firebasestorage.app",
-  messagingSenderId: "1057617363322",
-  appId: "1:1057617363322:web:833f2ec7d66b088f30d6c3",
-  measurementId: "G-N7VWXD1PTT"
+  //Set up according to your configuration
 };
 
 // Initialize Firebase
