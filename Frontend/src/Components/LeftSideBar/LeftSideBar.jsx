@@ -1,8 +1,8 @@
-import React, { useContext, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import './LeftSideBar.css'
 import assets from '../../assets/assets'
 import { useNavigate } from 'react-router-dom'
-import { arrayUnion, collection, doc, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
+import { arrayUnion, collection, doc, getDoc, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '../../Config/firebase'
 import { getDocs } from 'firebase/firestore'
 import { AppContext } from '../../Context/AppContext'
@@ -13,8 +13,8 @@ import { toast } from 'react-toastify'
 function LeftSideBar() {
 
     const navigate = useNavigate()
-    const { userData, chatData } = useContext(AppContext)
-    const [user, setuser] = useState(null)//user you get on searching
+    const { userData, chatData, messagesId, setmessagesId, chatUser, setchatUser } = useContext(AppContext)
+    const [user, setuser] = useState(null)
     const [showSearch, setShowSearch] = useState(false)
 
     const handleeditProfile = () => {
@@ -34,7 +34,6 @@ function LeftSideBar() {
 
                 if (!querySnap.empty && querySnap.docs[0].data().id !== userData.id) {
                     let userExist = false
-                    console.log(chatData)
                     chatData.map((user) => {
                         if (user.rId === querySnap.docs[0].data().id) {
                             userExist = true
@@ -79,7 +78,6 @@ function LeftSideBar() {
                     rId: userData.id,
                     updated: Date.now(),
                     messageSeen: true
-
                 })
             })
 
@@ -92,6 +90,20 @@ function LeftSideBar() {
                     messageSeen: true
                 })
             })
+
+            const uSnap=await getDoc(doc(db,'users',user.id))
+            const uData=uSnap.data()
+            setChat({
+                messagesId:newMessageRef.id,
+                lastmessage:"",
+                rId:user.id,
+                updated:Date.now(),
+                messageSeen:true,
+                userData:uData
+            })
+
+            setShowSearch(false)
+
         }
 
         catch (error) {
@@ -100,9 +112,33 @@ function LeftSideBar() {
         }
     }
 
-    const setChat=async(items)=>{
-        console.log(items)
+    const setChat = async (items) => {
+        setmessagesId(items.messageId)
+        setchatUser(items)
+
+        const userChatsRef=doc(db,'chats',userData.id)
+        const userChatsSnapshot=await getDoc(userChatsRef)
+
+        const userChatsData=userChatsSnapshot.data()
+
+        const chatIndex=userChatsData.chatsData.findIndex((c)=>c.messageId===items.messageId)
+        userChatsData.chatsData[chatIndex].messageSeen=true
+        await updateDoc(userChatsRef,{
+            chatsData:userChatsData.chatsData
+        })
     }
+
+    useEffect(()=>{
+        const updateChatUserData=async()=>{
+            if(chatUser){
+                const userRef=doc(db,'users',chatUser.userData.id)
+                const userSnap=await getDoc(userRef)
+                const userData=userSnap.data()
+                setchatUser(prev=>({...prev,userData:userData}))
+            }
+        }
+        updateChatUserData()
+    },[chatData])
 
     return (
         <div className='ls'>
@@ -124,28 +160,29 @@ function LeftSideBar() {
                 </div>
             </div>
             <div className="ls-list">
-            {
-    showSearch && user ? 
-        <div onClick={addChat} className='friends add-user'>
-            <img src={user.avatar} alt='' />
-            <p>{user.name}</p>
-        </div>
-    : 
-    chatData && chatData.length > 0 ? (
-        chatData.map((item, index) => (
-            <div onClick={()=>setChat(item)} key={index} className="friends">
-                <img src={item.userData?.avatar || assets.avatar_icon} alt='' />
-                <div>
-                    <p>{item.userData?.name || "Unknown"}</p>
-                    <span>{item.lastMessage || "No messages yet"}</span>
-                </div>
-            </div>
-        ))
-    ) : (
-        <p>Loading chats...</p>
-    )
-}
+                {
+                    showSearch && user ?
+                        <div onClick={addChat} className='friends add-user'>
+                            <img src={user.avatar} alt='' />
+                            <p>{user.name}</p>
+                        </div>
+                        :
+                        chatData && chatData.length > 0 ? (
+                            chatData.map((item, index) => (
 
+                                <div onClick={() => setChat(item)} key={index} className={`friends ${item.messageSeen || item.messageId===messagesId? "" : "border"}`}>
+                                    
+                                    <img src={item.userData?.avatar || assets.avatar_icon} alt='' />
+                                    <div>
+                                        <p>{item.userData?.name || "Unknown"}</p>
+                                        <span>{item.lastmessage || "No messages yet"}</span>
+                                    </div>
+                                </div>
+                            )))
+                            : (
+                                <p>Loading chats...</p>
+                            )
+                }
 
             </div>
         </div>
